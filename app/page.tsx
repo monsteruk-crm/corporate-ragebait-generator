@@ -32,6 +32,24 @@ export default function Home() {
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [generationNotice, setGenerationNotice] = useState<string | null>(null);
 
+  function randomSliderValue(): number {
+    return Math.floor(Math.random() * 101);
+  }
+
+  function handleRandomizeSettings() {
+    setSettings({
+      absurdity: randomSliderValue(),
+      corporateCringe: randomSliderValue(),
+      aiPanic: randomSliderValue(),
+      founderEgo: randomSliderValue(),
+      humorLevel: randomSliderValue(),
+      dystopiaLevel: randomSliderValue(),
+      emojiDensity: randomSliderValue(),
+      hashtagChaos: randomSliderValue(),
+    });
+    setGenerationNotice("Parameters randomized.");
+  }
+
   async function handleGenerate() {
     setIsGenerating(true);
     setGenerationNotice(null);
@@ -136,23 +154,33 @@ export default function Home() {
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-8 sm:px-6 lg:px-10">
       <header className="rounded-2xl border border-black/10 bg-white px-6 py-8 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-rose-700">
-          Satire project
-        </p>
-        <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-900 sm:text-5xl">
-          LinkedIn Ragebait Forge
-        </h1>
-        <p className="mt-3 max-w-2xl text-sm text-slate-700 sm:text-base">
-          Build absurd fake thought-leadership posts with fictional personas and
-          overcaffeinated corporate drama.
-        </p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-rose-700">
+              Satire project
+            </p>
+            <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-900 sm:text-5xl">
+              LinkedIn Ragebait Forge
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm text-slate-700 sm:text-base">
+              Build absurd fake thought-leadership posts with fictional personas and
+              overcaffeinated corporate drama.
+            </p>
+          </div>
+          <div className="sm:min-w-[260px]">
+            <GenerateButton onClick={handleGenerate} isLoading={isGenerating} />
+          </div>
+        </div>
       </header>
 
       <section className="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
         <aside className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm">
-          <RagebaitControls settings={settings} onChange={setSettings} />
+          <RagebaitControls
+            settings={settings}
+            onChange={setSettings}
+            onRandomize={handleRandomizeSettings}
+          />
           <div className="mt-6 flex flex-col gap-3">
-            <GenerateButton onClick={handleGenerate} isLoading={isGenerating} />
             <label className="text-sm font-semibold text-slate-800" htmlFor="imagePrompt">
               Suggested image prompt
             </label>
