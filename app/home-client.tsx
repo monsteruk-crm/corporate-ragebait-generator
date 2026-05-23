@@ -30,13 +30,23 @@ const IMAGE_PHASES: Array<{ key: ImageGenerationStage; label: string }> = [
 
 type HomeClientProps = {
   initialSettings: RagebaitSettings;
+  initialPost: RagebaitPost | null;
+  initialImageUrl: string | null;
+  initialPublishedUrl: string | null;
 };
 
-export function HomeClient({ initialSettings }: HomeClientProps) {
+export function HomeClient({
+  initialSettings,
+  initialPost,
+  initialImageUrl,
+  initialPublishedUrl,
+}: HomeClientProps) {
   const [settings, setSettings] = useState<RagebaitSettings>(initialSettings);
-  const [post, setPost] = useState<RagebaitPost>(PLACEHOLDER_POST);
-  const [imagePrompt, setImagePrompt] = useState<string>(PLACEHOLDER_POST.imagePrompt);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [post, setPost] = useState<RagebaitPost>(initialPost ?? PLACEHOLDER_POST);
+  const [imagePrompt, setImagePrompt] = useState<string>(
+    initialPost?.imagePrompt ?? PLACEHOLDER_POST.imagePrompt,
+  );
+  const [imageUrl, setImageUrl] = useState<string | null>(initialImageUrl);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRegeneratingPrompt, setIsRegeneratingPrompt] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
@@ -46,7 +56,7 @@ export function HomeClient({ initialSettings }: HomeClientProps) {
   const [imageGenerationStatus, setImageGenerationStatus] = useState<string | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [generationNotice, setGenerationNotice] = useState<string | null>(null);
-  const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
+  const [publishedUrl, setPublishedUrl] = useState<string | null>(initialPublishedUrl);
 
   function randomSliderValue(): number {
     return Math.floor(Math.random() * 101);
