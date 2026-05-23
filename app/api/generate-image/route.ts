@@ -36,70 +36,65 @@ export async function POST(request: Request) {
     };
 
     void (async () => {
-      const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
       let cancelled = false;
-      let phaseRunner: Promise<void> | null = null;
 
       try {
         await sendEvent("progress", {
-          progress: 6,
+          progress: 4,
           stage: "queued",
           message: "Queued for rendering...",
         });
 
-        const phasePlan = [
-          { delay: 700, progress: 24, stage: "rendering", message: "Rendering the support image..." },
-          { delay: 900, progress: 52, stage: "encoding", message: "Encoding the generated image..." },
-          { delay: 900, progress: 78, stage: "finalizing", message: "Finalizing image output..." },
-        ] as const;
-
-        phaseRunner = (async () => {
-          for (const phase of phasePlan) {
-            await wait(phase.delay);
-            if (cancelled) {
-              return;
-            }
-
-            await sendEvent("progress", phase);
-          }
-        })();
-
-        const result = await openai.images.generate({
+        const stream = await openai.images.generate({
           model: imageModel,
           prompt: imagePrompt,
           size: "1024x1024",
+          stream: true,
+          partial_images: 3,
         });
 
-        cancelled = true;
-        await phaseRunner;
+        let finalImageUrl: string | null = null;
 
-        const b64 = result.data?.[0]?.b64_json;
-        if (!b64) {
+        for await (const event of stream) {
+          if (cancelled) {
+            return;
+          }
+
+          if (event.type === "image_generation.partial_image") {
+            const progress = Math.min(18 + event.partial_image_index * 24, 86);
+            await sendEvent("partial", {
+              progress,
+              stage: "rendering",
+              message: `Rendering visual draft ${event.partial_image_index + 1}...`,
+              imageUrl: `data:image/${event.output_format};base64,${event.b64_json}`,
+              partialIndex: event.partial_image_index,
+            });
+            continue;
+          }
+
+          if (event.type === "image_generation.completed") {
+            finalImageUrl = `data:image/${event.output_format};base64,${event.b64_json}`;
+            await sendEvent("progress", {
+              progress: 100,
+              stage: "complete",
+              message: "Image ready.",
+            });
+            await sendEvent("done", { imageUrl: finalImageUrl });
+          }
+        }
+
+        if (!finalImageUrl) {
           await sendEvent("error", {
-            error: "Image model returned no image data.",
+            error: "Image model returned no final image data.",
           });
           return;
         }
-
-        await sendEvent("progress", {
-          progress: 100,
-          stage: "complete",
-          message: "Image ready.",
-        });
-        await sendEvent("done", { imageUrl: `data:image/png;base64,${b64}` });
       } catch {
         await sendEvent("error", {
           error: "Failed to generate support image.",
         });
       } finally {
         cancelled = true;
-        if (phaseRunner) {
-          try {
-            await phaseRunner;
-          } catch {
-            // Ignore background phase errors during shutdown.
-          }
-        }
         await writer.close();
       }
     })();

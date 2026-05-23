@@ -61,14 +61,20 @@ export function LinkedInPostPreview({
         </p>
 
         {imageUrl ? (
-          <Image
-            src={imageUrl}
-            alt="Generated satirical support image"
-            width={1024}
-            height={1024}
-            unoptimized
-            className="mt-4 h-auto w-full rounded-lg border border-slate-300"
-          />
+          <div
+            key={imageUrl}
+            className="mt-4"
+            style={{ animation: "softFadeIn 260ms ease-out" }}
+          >
+            <Image
+              src={imageUrl}
+              alt="Generated satirical support image"
+              width={1024}
+              height={1024}
+              unoptimized
+              className="h-auto w-full rounded-lg border border-slate-300"
+            />
+          </div>
         ) : (
           <div className="mt-4 rounded-lg border-2 border-dashed border-slate-400 bg-white/80 p-8 text-center text-sm text-slate-600">
             Support image placeholder

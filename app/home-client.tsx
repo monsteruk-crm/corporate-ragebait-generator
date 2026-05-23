@@ -166,7 +166,7 @@ export function HomeClient({ initialSettings }: HomeClientProps) {
 
         try {
           const payload = JSON.parse(currentData) as
-            | { progress?: number; stage?: string; message?: string }
+            | { progress?: number; stage?: string; message?: string; imageUrl?: string }
             | { imageUrl?: string }
             | { error?: string };
 
@@ -176,6 +176,21 @@ export function HomeClient({ initialSettings }: HomeClientProps) {
             typeof payload.progress === "number"
           ) {
             setImageGenerationProgress(payload.progress);
+          }
+
+          if (
+            currentEvent === "partial" &&
+            "imageUrl" in payload &&
+            typeof payload.imageUrl === "string"
+          ) {
+            setImageUrl(payload.imageUrl);
+            setImageGenerationStage("rendering");
+            if ("progress" in payload && typeof payload.progress === "number") {
+              setImageGenerationProgress(payload.progress);
+            }
+            if ("message" in payload && typeof payload.message === "string") {
+              setImageGenerationStatus(payload.message);
+            }
           }
 
           if ("stage" in payload && typeof payload.stage === "string") {
