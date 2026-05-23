@@ -17,12 +17,31 @@ const PLACEHOLDER_POST: RagebaitPost = {
 type LinkedInPostPreviewProps = {
   post: RagebaitPost;
   imageUrl: string | null;
+  publishedUrl?: string | null;
 };
 
-export function LinkedInPostPreview({ post, imageUrl }: LinkedInPostPreviewProps) {
+export function LinkedInPostPreview({
+  post,
+  imageUrl,
+  publishedUrl,
+}: LinkedInPostPreviewProps) {
   return (
     <section aria-label="Post preview">
-      <h2 className="text-lg font-bold text-slate-900">Fake LinkedIn Preview</h2>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <h2 className="text-lg font-bold text-slate-900">Published Post Preview</h2>
+        {publishedUrl ? (
+          <a
+            href={publishedUrl}
+            className="inline-flex w-fit items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-900 transition hover:bg-emerald-100"
+          >
+            Open static page
+          </a>
+        ) : (
+          <span className="text-xs font-medium text-slate-500">
+            Publish to get a shareable URL
+          </span>
+        )}
+      </div>
 
       <article className="mt-4 rounded-xl border border-blue-200 bg-sky-50/35 p-5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.45)]">
         <div className="flex items-center gap-3">
@@ -61,6 +80,15 @@ export function LinkedInPostPreview({ post, imageUrl }: LinkedInPostPreviewProps
           <span>{post.commentCount.toLocaleString()} comments</span>
           <span>{post.repostCount.toLocaleString()} reposts</span>
         </div>
+
+        {publishedUrl ? (
+          <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-900">
+            <p className="font-semibold">Share URL</p>
+            <a className="break-all underline" href={publishedUrl}>
+              {publishedUrl}
+            </a>
+          </div>
+        ) : null}
       </article>
     </section>
   );

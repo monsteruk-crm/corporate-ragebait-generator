@@ -1,0 +1,25 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model PublishedPost {
+  id                 String   @id @default(cuid())
+  authorName         String
+  authorTitle        String
+  headline           String
+  body               String
+  hashtags           Json
+  reactionCount      Int
+  commentCount       Int
+  repostCount        Int
+  imagePrompt        String
+  shareText          String
+  supportImageDataUrl String?
+  settings           Json
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}

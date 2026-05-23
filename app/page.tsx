@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { GenerateButton } from "./components/GenerateButton";
+import { PublishButton } from "./components/PublishButton";
 import {
   LinkedInPostPreview,
   PLACEHOLDER_POST,
@@ -9,6 +10,7 @@ import {
 import { RagebaitControls } from "./components/RagebaitControls";
 import { ShareButton } from "./components/ShareButton";
 import { generateLocalRagebait } from "../lib/localGenerator";
+import { buildShareText } from "../lib/published-post";
 import type { RagebaitPost, RagebaitSettings } from "../lib/types";
 
 const DEFAULT_SETTINGS: RagebaitSettings = {
@@ -22,6 +24,21 @@ const DEFAULT_SETTINGS: RagebaitSettings = {
   hashtagChaos: 90,
 };
 
+type ImageGenerationStage =
+  | "queued"
+  | "rendering"
+  | "encoding"
+  | "finalizing"
+  | "complete";
+
+const IMAGE_PHASES: Array<{ key: ImageGenerationStage; label: string }> = [
+  { key: "queued", label: "Queued" },
+  { key: "rendering", label: "Rendering" },
+  { key: "encoding", label: "Encoding" },
+  { key: "finalizing", label: "Finalizing" },
+  { key: "complete", label: "Done" },
+];
+
 export default function Home() {
   const [settings, setSettings] = useState<RagebaitSettings>(DEFAULT_SETTINGS);
   const [post, setPost] = useState<RagebaitPost>(PLACEHOLDER_POST);
@@ -30,13 +47,20 @@ export default function Home() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRegeneratingPrompt, setIsRegeneratingPrompt] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [imageGenerationProgress, setImageGenerationProgress] = useState(0);
+  const [imageGenerationStage, setImageGenerationStage] =
+    useState<ImageGenerationStage | null>(null);
+  const [imageGenerationStatus, setImageGenerationStatus] = useState<string | null>(null);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [generationNotice, setGenerationNotice] = useState<string | null>(null);
+  const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
 
   function randomSliderValue(): number {
     return Math.floor(Math.random() * 101);
   }
 
   function handleRandomizeSettings() {
+    setPublishedUrl(null);
     setSettings({
       absurdity: randomSliderValue(),
       corporateCringe: randomSliderValue(),
@@ -53,6 +77,7 @@ export default function Home() {
   async function handleGenerate() {
     setIsGenerating(true);
     setGenerationNotice(null);
+    setPublishedUrl(null);
 
     try {
       const response = await fetch("/api/generate", {
@@ -106,7 +131,11 @@ export default function Home() {
 
   async function handleGenerateImage() {
     setIsGeneratingImage(true);
+    setImageGenerationProgress(0);
+    setImageGenerationStage("queued");
+    setImageGenerationStatus("Starting image generation...");
     setGenerationNotice(null);
+    setPublishedUrl(null);
 
     try {
       const response = await fetch("/api/generate-image", {
@@ -119,36 +148,201 @@ export default function Home() {
         throw new Error("image-generation-failed");
       }
 
-      const json = (await response.json()) as { imageUrl: string };
-      setImageUrl(json.imageUrl);
+      const contentType = response.headers.get("content-type") ?? "";
+
+      if (!response.body || !contentType.includes("text/event-stream")) {
+        const json = (await response.json()) as { imageUrl: string };
+        setImageUrl(json.imageUrl);
+        setImageGenerationProgress(100);
+        setImageGenerationStatus("Image ready.");
+        return;
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let currentEvent = "message";
+      let currentData = "";
+
+      const flushEvent = () => {
+        if (!currentData.trim()) {
+          currentEvent = "message";
+          currentData = "";
+          return;
+        }
+
+        try {
+          const payload = JSON.parse(currentData) as
+            | { progress?: number; stage?: string; message?: string }
+            | { imageUrl?: string }
+            | { error?: string };
+
+          if (
+            currentEvent === "progress" &&
+            "progress" in payload &&
+            typeof payload.progress === "number"
+          ) {
+            setImageGenerationProgress(payload.progress);
+          }
+
+          if ("stage" in payload && typeof payload.stage === "string") {
+            const nextStage = payload.stage as ImageGenerationStage;
+            setImageGenerationStage(nextStage);
+            const stageLabelMap: Record<string, string> = {
+              queued: "Queued for rendering...",
+              rendering: "Rendering the support image...",
+              encoding: "Encoding the generated image...",
+              finalizing: "Finalizing image output...",
+              complete: "Image ready.",
+            };
+
+            setImageGenerationStatus(
+              stageLabelMap[payload.stage] ?? payload.message ?? null,
+            );
+          }
+
+          if ("message" in payload && typeof payload.message === "string") {
+            setImageGenerationStatus(payload.message);
+          }
+
+          if (
+            currentEvent === "done" &&
+            "imageUrl" in payload &&
+            typeof payload.imageUrl === "string"
+          ) {
+            setImageUrl(payload.imageUrl);
+            setImageGenerationProgress(100);
+            setImageGenerationStatus("Image ready.");
+          }
+
+          if (
+            currentEvent === "error" &&
+            "error" in payload &&
+            typeof payload.error === "string"
+          ) {
+            throw new Error(payload.error);
+          }
+        } catch (error) {
+          if (error instanceof Error) {
+            throw error;
+          }
+        } finally {
+          currentEvent = "message";
+          currentData = "";
+        }
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        let boundaryIndex = buffer.indexOf("\n\n");
+        while (boundaryIndex !== -1) {
+          const rawEvent = buffer.slice(0, boundaryIndex);
+          buffer = buffer.slice(boundaryIndex + 2);
+
+          const lines = rawEvent.split("\n");
+          currentEvent = "message";
+          currentData = "";
+
+          for (const line of lines) {
+            if (line.startsWith("event:")) {
+              currentEvent = line.slice(6).trim();
+            } else if (line.startsWith("data:")) {
+              currentData += line.slice(5).trim();
+            }
+          }
+
+          flushEvent();
+          boundaryIndex = buffer.indexOf("\n\n");
+        }
+      }
     } catch {
-      setGenerationNotice("Image generation failed. Please try again.");
+        setGenerationNotice("Image generation failed. Please try again.");
+        setImageGenerationStatus("Image generation failed.");
+        setImageGenerationStage(null);
     } finally {
       setIsGeneratingImage(false);
     }
   }
 
-  async function handleShareOnLinkedIn() {
-    const shareText = [
-      `${post.authorName} — ${post.authorTitle}`,
-      "",
-      post.headline,
-      "",
-      post.body,
-      "",
-      post.hashtags.join(" "),
-    ].join("\n");
-
-    try {
-      await navigator.clipboard.writeText(shareText);
-    } catch {
-      // Continue even if clipboard fails in some browser contexts.
+  async function copyTextToClipboard(text: string) {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
     }
 
-    window.open("https://www.linkedin.com/feed/?shareActive=true", "_blank", "noopener,noreferrer");
-    setGenerationNotice(
-      "LinkedIn does not allow arbitrary auto-posting without OAuth and API approval. Your post text has been copied.",
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "true");
+    textarea.style.position = "fixed";
+    textarea.style.top = "-9999px";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+
+    const copied = document.execCommand("copy");
+    document.body.removeChild(textarea);
+    return copied;
+  }
+
+  async function handleShareOnLinkedIn() {
+    const shareText = buildShareText(post);
+
+    const shareWindow = window.open(
+      "https://www.linkedin.com/feed/?shareActive=true",
+      "_blank",
+      "noopener,noreferrer",
     );
+
+    let copied = false;
+    try {
+      copied = await copyTextToClipboard(shareText);
+    } catch {
+      copied = false;
+    }
+
+    if (!shareWindow) {
+      setGenerationNotice(
+        copied
+          ? "Clipboard copy worked, but the LinkedIn tab was blocked by your browser. Open LinkedIn manually to paste the post."
+          : "Clipboard copy failed and the LinkedIn tab was blocked by your browser. Open LinkedIn manually and paste the post.",
+      );
+      return;
+    }
+
+    setGenerationNotice(
+      copied
+        ? "LinkedIn does not allow arbitrary auto-posting without OAuth and API approval. Your post text has been copied."
+        : "LinkedIn opened in a new tab, but clipboard copy failed. Paste the post manually.",
+    );
+  }
+
+  async function handlePublishSharePage() {
+    setIsPublishing(true);
+    setGenerationNotice(null);
+
+    try {
+      const response = await fetch("/api/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ settings, post, imageUrl }),
+      });
+
+      if (!response.ok) {
+        throw new Error("publish-failed");
+      }
+
+      const json = (await response.json()) as { id: string; url: string };
+      setPublishedUrl(json.url);
+      setGenerationNotice("Published share page saved to the database.");
+    } catch {
+      setGenerationNotice("Publishing failed. Make sure the database is reachable.");
+    } finally {
+      setIsPublishing(false);
+    }
   }
 
   return (
@@ -205,17 +399,69 @@ export default function Home() {
               disabled={isGeneratingImage}
               className="w-full rounded-lg bg-indigo-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-indigo-700"
             >
-              {isGeneratingImage ? "Generating Image..." : "Generate Support Image"}
+              {isGeneratingImage
+                ? `Generating Image... ${imageGenerationProgress}%`
+                : "Generate Support Image"}
             </button>
+            {isGeneratingImage ? (
+              <div className="space-y-2 rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-3">
+              <div className="h-2 overflow-hidden rounded-full bg-indigo-100">
+                  <div
+                    className="h-full rounded-full bg-indigo-600 transition-all duration-300"
+                    style={{ width: `${Math.min(Math.max(imageGenerationProgress, 5), 100)}%` }}
+                  />
+                </div>
+                <p className="text-xs font-medium text-indigo-900">
+                  {imageGenerationStatus ?? "Rendering image..."}
+                </p>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                  {IMAGE_PHASES.map((phase, index) => {
+                    const isActive = imageGenerationStage === phase.key;
+                    const isComplete =
+                      imageGenerationStage !== null &&
+                      IMAGE_PHASES.findIndex((item) => item.key === imageGenerationStage) >
+                        index;
+
+                    return (
+                      <div
+                        key={phase.key}
+                        className={`rounded-md border px-2 py-1 text-[11px] font-semibold transition ${
+                          isActive
+                            ? "border-indigo-300 bg-white text-indigo-900"
+                            : isComplete
+                              ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                              : "border-indigo-100 bg-indigo-50/60 text-indigo-700"
+                        }`}
+                      >
+                        {phase.label}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+            <PublishButton onClick={handlePublishSharePage} isLoading={isPublishing} />
             <ShareButton onClick={handleShareOnLinkedIn} />
             {generationNotice ? (
               <p className="text-xs text-amber-700">{generationNotice}</p>
+            ) : null}
+            {publishedUrl ? (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
+                <p className="font-semibold">Live share page</p>
+                <a className="break-all underline" href={publishedUrl}>
+                  {publishedUrl}
+                </a>
+              </div>
             ) : null}
           </div>
         </aside>
 
         <div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm">
-          <LinkedInPostPreview post={post} imageUrl={imageUrl} />
+          <LinkedInPostPreview
+            post={post}
+            imageUrl={imageUrl}
+            publishedUrl={publishedUrl}
+          />
         </div>
       </section>
     </main>
