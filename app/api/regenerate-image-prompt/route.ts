@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
+import { consumeDailyQueryQuota } from "../../../lib/rate-limit";
 import type { RagebaitPost, RagebaitSettings } from "../../../lib/types";
 
 const openai = new OpenAI({
@@ -51,6 +52,18 @@ export async function POST(request: Request) {
 
     if (!isValidSettings(settings) || !isValidPostInput(post)) {
       return NextResponse.json({ error: "Invalid input." }, { status: 400 });
+    }
+
+    const quota = await consumeDailyQueryQuota(request, "regenerate-image-prompt");
+    if (!quota.allowed) {
+      return NextResponse.json(
+        {
+          error: "Daily query limit reached for this IP.",
+          remaining: quota.remaining,
+          resetAt: quota.resetAt.toISOString(),
+        },
+        { status: 429 },
+      );
     }
 
     const prompt = `

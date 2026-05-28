@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
+import { consumeDailyQueryQuota } from "../../../lib/rate-limit";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -22,6 +23,18 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "imagePrompt must be a non-empty string." },
         { status: 400 },
+      );
+    }
+
+    const quota = await consumeDailyQueryQuota(request, "generate-image");
+    if (!quota.allowed) {
+      return NextResponse.json(
+        {
+          error: "Daily query limit reached for this IP.",
+          remaining: quota.remaining,
+          resetAt: quota.resetAt.toISOString(),
+        },
+        { status: 429 },
       );
     }
 

@@ -4,7 +4,11 @@ import { notFound } from "next/navigation";
 import { LinkedInPostPreview } from "../../components/LinkedInPostPreview";
 import { PublishedPostActions } from "../../components/PublishedPostActions";
 import { prisma } from "../../../lib/prisma";
-import { buildShareText, getPublicPostUrl } from "../../../lib/published-post";
+import {
+  buildShareText,
+  getPublicPostUrl,
+  getPublishedImageUrl,
+} from "../../../lib/published-post";
 import type { RagebaitPost } from "../../../lib/types";
 
 export const dynamic = "force-dynamic";
@@ -93,7 +97,7 @@ export default async function PublishedPostPage({ params }: PageParams) {
         </p>
       </header>
 
-      <LinkedInPostPreview post={shareablePost} imageUrl={post.supportImageDataUrl} />
+      <LinkedInPostPreview post={shareablePost} imageUrl={getPublishedImageUrl(post.id)} />
 
       <PublishedPostActions
         url={url}

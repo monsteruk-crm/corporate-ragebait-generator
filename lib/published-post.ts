@@ -15,3 +15,7 @@ export function buildShareText(post: RagebaitPost): string {
 export function getPublicPostUrl(requestUrl: string, id: string): string {
   return new URL(`/p/${id}`, requestUrl).toString();
 }
+
+export function getPublishedImageUrl(id: string): string {
+  return `/api/published-image/${id}`;
+}

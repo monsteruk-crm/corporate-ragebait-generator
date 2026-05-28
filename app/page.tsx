@@ -1,6 +1,6 @@
 import { prisma } from "../lib/prisma";
 import { isRagebaitSettings, DEFAULT_SETTINGS } from "../lib/default-settings";
-import { getPublicPostUrl } from "../lib/published-post";
+import { getPublicPostUrl, getPublishedImageUrl } from "../lib/published-post";
 import { HomeClient } from "./home-client";
 import { headers } from "next/headers";
 import type { RagebaitPost } from "../lib/types";
@@ -57,7 +57,7 @@ async function getInitialState(requestUrl: string) {
     return {
       initialSettings: latestPublished.settings,
       initialPost: post,
-      initialImageUrl: latestPublished.supportImageDataUrl,
+      initialImageUrl: getPublishedImageUrl(latestPublished.id),
       initialPublishedUrl: getPublicPostUrl(requestUrl, latestPublished.id),
     };
   }

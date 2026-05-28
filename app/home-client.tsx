@@ -35,6 +35,22 @@ type HomeClientProps = {
   initialPublishedUrl: string | null;
 };
 
+async function readErrorMessage(
+  response: Response,
+  fallbackMessage: string,
+): Promise<string> {
+  try {
+    const json = (await response.json()) as { error?: unknown };
+    if (typeof json.error === "string" && json.error.trim().length > 0) {
+      return json.error;
+    }
+  } catch {
+    // Ignore malformed error bodies and fall back to a generic message.
+  }
+
+  return fallbackMessage;
+}
+
 export function HomeClient({
   initialSettings,
   initialPost,
@@ -90,7 +106,17 @@ export function HomeClient({
       });
 
       if (!response.ok) {
-        throw new Error("generation-failed");
+        const errorMessage = await readErrorMessage(
+          response,
+          "OpenAI unavailable. Used local parody generator fallback.",
+        );
+
+        if (response.status === 429) {
+          setGenerationNotice(errorMessage);
+          return;
+        }
+
+        throw new Error(errorMessage);
       }
 
       const json = (await response.json()) as RagebaitPost;
@@ -120,7 +146,17 @@ export function HomeClient({
       });
 
       if (!response.ok) {
-        throw new Error("prompt-regeneration-failed");
+        const errorMessage = await readErrorMessage(
+          response,
+          "Could not regenerate image prompt. You can still edit it manually.",
+        );
+
+        if (response.status === 429) {
+          setGenerationNotice(errorMessage);
+          return;
+        }
+
+        throw new Error(errorMessage);
       }
 
       const json = (await response.json()) as { imagePrompt: string };
@@ -148,7 +184,17 @@ export function HomeClient({
       });
 
       if (!response.ok) {
-        throw new Error("image-generation-failed");
+        const errorMessage = await readErrorMessage(
+          response,
+          "Image generation failed. Please try again.",
+        );
+
+        if (response.status === 429) {
+          setGenerationNotice(errorMessage);
+          return;
+        }
+
+        throw new Error(errorMessage);
       }
 
       const contentType = response.headers.get("content-type") ?? "";

@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
 import { buildRagebaitPrompt } from "../../../lib/prompts";
+import { consumeDailyQueryQuota } from "../../../lib/rate-limit";
 import type { RagebaitPost, RagebaitSettings } from "../../../lib/types";
 
 const openai = new OpenAI({
@@ -60,6 +61,18 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Invalid generator settings." },
         { status: 400 },
+      );
+    }
+
+    const quota = await consumeDailyQueryQuota(request, "generate");
+    if (!quota.allowed) {
+      return NextResponse.json(
+        {
+          error: "Daily query limit reached for this IP.",
+          remaining: quota.remaining,
+          resetAt: quota.resetAt.toISOString(),
+        },
+        { status: 429 },
       );
     }
 
