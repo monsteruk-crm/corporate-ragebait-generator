@@ -34,7 +34,6 @@ async function getInitialState(requestUrl: string) {
       commentCount: true,
       repostCount: true,
       imagePrompt: true,
-      supportImageDataUrl: true,
       settings: true,
     },
   });

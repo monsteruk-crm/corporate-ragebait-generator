@@ -22,6 +22,19 @@ type PageParams = {
 async function getPublishedPost(id: string) {
   return prisma.publishedPost.findUnique({
     where: { id },
+    select: {
+      id: true,
+      authorName: true,
+      authorTitle: true,
+      headline: true,
+      body: true,
+      hashtags: true,
+      reactionCount: true,
+      commentCount: true,
+      repostCount: true,
+      imagePrompt: true,
+      shareText: true,
+    },
   });
 }
 
@@ -40,6 +53,7 @@ async function getRequestOrigin() {
 export async function generateMetadata({ params }: PageParams): Promise<Metadata> {
   const { id } = await params;
   const post = await getPublishedPost(id);
+  const origin = await getRequestOrigin();
 
   if (!post) {
     return {
@@ -47,15 +61,37 @@ export async function generateMetadata({ params }: PageParams): Promise<Metadata
     };
   }
 
+  const postUrl = new URL(`/p/${id}`, origin).toString();
+  const imageUrl = new URL(`/p/${id}/opengraph-image`, origin).toString();
   const headline = post.headline.slice(0, 80);
   const description = post.body.slice(0, 160);
 
   return {
+    metadataBase: new URL(origin),
     title: `${post.authorName} | ${headline}`,
     description,
+    alternates: {
+      canonical: postUrl,
+    },
     openGraph: {
+      type: "article",
+      url: postUrl,
       title: headline,
       description,
+      images: [
+        {
+          url: imageUrl,
+          width: 1200,
+          height: 630,
+          alt: headline,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: headline,
+      description,
+      images: [imageUrl],
     },
   };
 }
