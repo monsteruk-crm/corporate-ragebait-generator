@@ -102,13 +102,18 @@ export async function POST(request: Request) {
           });
           return;
         }
-      } catch {
+      } catch (error) {
+        console.error("generate-image stream failed", error);
         await sendEvent("error", {
           error: "Failed to generate support image.",
         });
       } finally {
         cancelled = true;
-        await writer.close();
+        try {
+          await writer.close();
+        } catch (error) {
+          console.error("generate-image stream close failed", error);
+        }
       }
     })();
 
@@ -119,7 +124,8 @@ export async function POST(request: Request) {
         Connection: "keep-alive",
       },
     });
-  } catch {
+  } catch (error) {
+    console.error("generate-image route failed", error);
     return NextResponse.json(
       { error: "Failed to generate support image." },
       { status: 500 },

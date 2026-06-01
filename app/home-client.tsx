@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { GenerateButton } from "./components/GenerateButton";
 import { PublishButton } from "./components/PublishButton";
 import {
@@ -51,6 +51,15 @@ async function readErrorMessage(
   return fallbackMessage;
 }
 
+const DAILY_LIMIT_BYPASS_STORAGE_KEY = "ragebait:daily-limit-bypass";
+
+function buildJsonHeaders(isBypassingDailyLimit: boolean): HeadersInit {
+  return {
+    "Content-Type": "application/json",
+    ...(isBypassingDailyLimit ? { "x-bypass-daily-limit": "1" } : {}),
+  };
+}
+
 export function HomeClient({
   initialSettings,
   initialPost,
@@ -73,6 +82,44 @@ export function HomeClient({
   const [isPublishing, setIsPublishing] = useState(false);
   const [generationNotice, setGenerationNotice] = useState<string | null>(null);
   const [publishedUrl, setPublishedUrl] = useState<string | null>(initialPublishedUrl);
+  const [isBypassingDailyLimit, setIsBypassingDailyLimit] = useState(false);
+
+  useEffect(() => {
+    setIsBypassingDailyLimit(
+      window.localStorage.getItem(DAILY_LIMIT_BYPASS_STORAGE_KEY) === "1",
+    );
+  }, []);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      const isToggleShortcut =
+        event.key.toLowerCase() === "l" &&
+        event.shiftKey &&
+        (event.metaKey || event.ctrlKey);
+
+      if (!isToggleShortcut) {
+        return;
+      }
+
+      event.preventDefault();
+      setIsBypassingDailyLimit((current) => {
+        const nextValue = !current;
+        window.localStorage.setItem(
+          DAILY_LIMIT_BYPASS_STORAGE_KEY,
+          nextValue ? "1" : "0",
+        );
+        setGenerationNotice(
+          nextValue
+            ? "Daily limit bypass enabled for this browser."
+            : "Daily limit bypass disabled.",
+        );
+        return nextValue;
+      });
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   function randomSliderValue(): number {
     return Math.floor(Math.random() * 101);
@@ -101,7 +148,7 @@ export function HomeClient({
     try {
       const response = await fetch("/api/generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: buildJsonHeaders(isBypassingDailyLimit),
         body: JSON.stringify({ settings }),
       });
 
@@ -141,7 +188,7 @@ export function HomeClient({
     try {
       const response = await fetch("/api/regenerate-image-prompt", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: buildJsonHeaders(isBypassingDailyLimit),
         body: JSON.stringify({ settings, post }),
       });
 
@@ -179,7 +226,7 @@ export function HomeClient({
     try {
       const response = await fetch("/api/generate-image", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: buildJsonHeaders(isBypassingDailyLimit),
         body: JSON.stringify({ imagePrompt }),
       });
 
@@ -462,9 +509,38 @@ export function HomeClient({
               Build absurd fake thought-leadership posts with fictional personas and
               overcaffeinated corporate drama.
             </p>
+            <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Shortcut: Cmd/Ctrl + Shift + L toggles daily limit bypass
+              {isBypassingDailyLimit ? " | Unlimited mode on" : ""}
+            </p>
           </div>
           <div className="sm:min-w-[260px]">
-            <GenerateButton onClick={handleGenerate} isLoading={isGenerating} />
+            <div className="flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  const nextValue = !isBypassingDailyLimit;
+                  setIsBypassingDailyLimit(nextValue);
+                  window.localStorage.setItem(
+                    DAILY_LIMIT_BYPASS_STORAGE_KEY,
+                    nextValue ? "1" : "0",
+                  );
+                  setGenerationNotice(
+                    nextValue
+                      ? "Daily limit bypass enabled for this browser."
+                      : "Daily limit bypass disabled.",
+                  );
+                }}
+                className={`w-full rounded-lg border px-4 py-3 text-sm font-bold transition ${
+                  isBypassingDailyLimit
+                    ? "border-emerald-300 bg-emerald-50 text-emerald-900 hover:bg-emerald-100"
+                    : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                {isBypassingDailyLimit ? "Unlimited mode: On" : "Unlimited mode: Off"}
+              </button>
+              <GenerateButton onClick={handleGenerate} isLoading={isGenerating} />
+            </div>
           </div>
         </div>
       </header>

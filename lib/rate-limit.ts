@@ -44,6 +44,15 @@ export async function consumeDailyQueryQuota(
   request: Request,
   routeName: string,
 ): Promise<DailyQueryUsageResult> {
+  if (request.headers.get("x-bypass-daily-limit") === "1") {
+    return {
+      allowed: true,
+      remaining: Number.MAX_SAFE_INTEGER,
+      queryCount: 0,
+      resetAt: new Date(),
+    };
+  }
+
   const now = new Date();
   const ipAddress = getRequestIp(request) ?? "unknown";
   const dayKey = getUtcDayKey(now);
