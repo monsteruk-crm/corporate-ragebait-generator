@@ -1,6 +1,27 @@
 import type { RagebaitSettings } from "./types";
 
 export function buildRagebaitPrompt(settings: RagebaitSettings): string {
+  const headlineTarget =
+    settings.headlineLength < 34
+      ? "very short, around 70-90 characters"
+      : settings.headlineLength < 67
+        ? "medium length, around 90-110 characters"
+        : "longer, up to 130 characters";
+
+  const bodyTarget =
+    settings.bodyLength < 34
+      ? "2 very short lines"
+      : settings.bodyLength < 67
+        ? "3-4 short lines"
+        : "5-7 short lines";
+
+  const hashtagTarget =
+    settings.hashtagCount < 34
+      ? "4-5 hashtags"
+      : settings.hashtagCount < 67
+        ? "6-7 hashtags"
+        : "8-9 hashtags";
+
   return `
 You are writing a completely fictional, satirical LinkedIn ragebait post.
 The result must feel like a real overcooked LinkedIn post, but it must be obvious parody.
@@ -23,6 +44,9 @@ Creative brief:
 - varied structure from generation to generation
 
 Slider behavior:
+- headlineLength: ${headlineTarget}.
+- bodyLength: ${bodyTarget}.
+- hashtagCount: ${hashtagTarget}.
 - absurdity: higher means more surreal logic and outrageous claims.
 - corporateCringe: higher means more jargon, synergy, leadership theatre, and KPI nonsense.
 - aiPanic: higher means more AI automation anxiety and agent hype.
@@ -65,12 +89,16 @@ Output requirements:
 
 Formatting guidance:
 - headline should be punchy and extreme.
+- body should match the requested line count and feel shorter or longer based on bodyLength.
 - body should include fake metrics, fake lessons, and fake CTA energy.
 - make the voice sound self-important, ridiculous, and internet-native.
 - use light emoji seasoning when emojiDensity is higher, but do not overdo it.
 - hashtags should reflect the post content and the chaos slider.
 
 Slider values (0-100):
+- headlineLength: ${settings.headlineLength}
+- bodyLength: ${settings.bodyLength}
+- hashtagCount: ${settings.hashtagCount}
 - absurdity: ${settings.absurdity}
 - corporateCringe: ${settings.corporateCringe}
 - aiPanic: ${settings.aiPanic}

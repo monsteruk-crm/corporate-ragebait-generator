@@ -1,6 +1,9 @@
 import type { RagebaitSettings } from "./types";
 
 export const DEFAULT_SETTINGS: RagebaitSettings = {
+  headlineLength: 35,
+  bodyLength: 28,
+  hashtagCount: 55,
   absurdity: 55,
   corporateCringe: 70,
   aiPanic: 80,
@@ -15,6 +18,9 @@ export function isRagebaitSettings(input: unknown): input is RagebaitSettings {
   if (!input || typeof input !== "object") return false;
 
   const keys: Array<keyof RagebaitSettings> = [
+    "headlineLength",
+    "bodyLength",
+    "hashtagCount",
     "absurdity",
     "corporateCringe",
     "aiPanic",

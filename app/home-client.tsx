@@ -127,6 +127,9 @@ export function HomeClient({
   function handleRandomizeSettings() {
     setPublishedUrl(null);
     setSettings({
+      headlineLength: settings.headlineLength,
+      bodyLength: settings.bodyLength,
+      hashtagCount: settings.hashtagCount,
       absurdity: randomSliderValue(),
       corporateCringe: randomSliderValue(),
       aiPanic: randomSliderValue(),

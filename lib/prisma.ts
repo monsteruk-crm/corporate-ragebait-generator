@@ -12,7 +12,18 @@ if (!connectionString) {
   throw new Error("POSTGRES_URL or PRISMA_DATABASE_URL must be set.");
 }
 
-const adapter = new PrismaPg(connectionString);
+function normalizeConnectionString(value: string): string {
+  const url = new URL(value);
+  const sslmode = url.searchParams.get("sslmode");
+
+  if (sslmode === "prefer" || sslmode === "require" || sslmode === "verify-ca") {
+    url.searchParams.set("uselibpqcompat", "true");
+  }
+
+  return url.toString();
+}
+
+const adapter = new PrismaPg(normalizeConnectionString(connectionString));
 
 export const prisma =
   globalForPrisma.prisma ??

@@ -9,6 +9,9 @@ type RagebaitControlsProps = {
 };
 
 const SLIDER_DEFS: Array<{ key: SliderKey; label: string }> = [
+  { key: "headlineLength", label: "Headline length" },
+  { key: "bodyLength", label: "Body length" },
+  { key: "hashtagCount", label: "Hashtag count" },
   { key: "absurdity", label: "Absurdity" },
   { key: "corporateCringe", label: "Corporate cringe" },
   { key: "aiPanic", label: "AI panic" },
@@ -18,6 +21,24 @@ const SLIDER_DEFS: Array<{ key: SliderKey; label: string }> = [
   { key: "emojiDensity", label: "Emoji density" },
   { key: "hashtagChaos", label: "Hashtag chaos" },
 ];
+
+function describeLength(value: number, kind: "headline" | "body" | "hashtags") {
+  if (kind === "headline") {
+    if (value < 34) return "Very short";
+    if (value < 67) return "Medium";
+    return "Long";
+  }
+
+  if (kind === "body") {
+    if (value < 34) return "Compact";
+    if (value < 67) return "Balanced";
+    return "Extended";
+  }
+
+  if (value < 34) return "Few";
+  if (value < 67) return "Some";
+  return "Many";
+}
 
 export function RagebaitControls({
   settings,
@@ -58,11 +79,23 @@ export function RagebaitControls({
         </button>
       </div>
       <div className="mt-4 space-y-4">
-        {SLIDER_DEFS.map(({ key, label }) => (
+        {SLIDER_DEFS.map(({ key, label }) => {
+          const isLengthControl =
+            key === "headlineLength" || key === "bodyLength" || key === "hashtagCount";
+          const helperLabel =
+            key === "headlineLength"
+              ? describeLength(settings[key], "headline")
+              : key === "bodyLength"
+                ? describeLength(settings[key], "body")
+                : key === "hashtagCount"
+                  ? describeLength(settings[key], "hashtags")
+                  : null;
+
+          return (
           <label key={key} className="block">
             <div className="mb-1 flex items-center justify-between text-sm font-medium text-slate-700">
               <span>{label}</span>
-              <span>{settings[key]}</span>
+              <span>{isLengthControl ? helperLabel : settings[key]}</span>
             </div>
             <input
               type="range"
@@ -77,8 +110,18 @@ export function RagebaitControls({
               }}
               className="w-full accent-rose-600"
             />
+            {isLengthControl ? (
+              <p className="mt-1 text-[11px] text-slate-500">
+                {key === "headlineLength"
+                  ? "Controls how punchy the headline is."
+                  : key === "bodyLength"
+                    ? "Controls how short or sprawling the post body is."
+                    : "Controls how many hashtags the model should use."}
+              </p>
+            ) : null}
           </label>
-        ))}
+          );
+        })}
       </div>
     </section>
   );

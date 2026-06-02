@@ -11,6 +11,9 @@ export type RagebaitPost = {
 };
 
 export type RagebaitSettings = {
+  headlineLength: number;
+  bodyLength: number;
+  hashtagCount: number;
   absurdity: number;
   corporateCringe: number;
   aiPanic: number;

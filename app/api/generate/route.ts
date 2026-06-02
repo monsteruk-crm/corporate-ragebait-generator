@@ -96,6 +96,9 @@ function isValidSettings(input: unknown): input is RagebaitSettings {
   if (!input || typeof input !== "object") return false;
 
   const keys: Array<keyof RagebaitSettings> = [
+    "headlineLength",
+    "bodyLength",
+    "hashtagCount",
     "absurdity",
     "corporateCringe",
     "aiPanic",
@@ -110,6 +113,31 @@ function isValidSettings(input: unknown): input is RagebaitSettings {
     const value = (input as Record<string, unknown>)[key];
     return typeof value === "number" && Number.isFinite(value);
   });
+}
+
+function getOutputTokenBudget(settings: RagebaitSettings): number {
+  const baseBudget = 260;
+  const headlineBudget = Math.round((settings.headlineLength / 100) * 60);
+  const bodyBudget = Math.round((settings.bodyLength / 100) * 220);
+  return Math.max(220, Math.min(900, baseBudget + headlineBudget + bodyBudget));
+}
+
+function getTargetHeadlineLength(settings: RagebaitSettings): number {
+  if (settings.headlineLength < 34) return 90;
+  if (settings.headlineLength < 67) return 110;
+  return 130;
+}
+
+function getTargetBodyLineCount(settings: RagebaitSettings): number {
+  if (settings.bodyLength < 34) return 2;
+  if (settings.bodyLength < 67) return 4;
+  return 6;
+}
+
+function getTargetHashtagCount(settings: RagebaitSettings): number {
+  if (settings.hashtagCount < 34) return 4;
+  if (settings.hashtagCount < 67) return 6;
+  return 9;
 }
 
 function parseStructuredJson(text: string): unknown | null {
@@ -151,6 +179,12 @@ function normalizeHeadline(value: unknown): string | null {
   return headline.toUpperCase();
 }
 
+function clampHeadlineToTargetLength(headline: string, targetLength: number): string {
+  if (headline.length <= targetLength) return headline;
+
+  return `${headline.slice(0, Math.max(0, targetLength - 1)).trimEnd()}…`;
+}
+
 function normalizeBody(value: unknown): string | null {
   if (typeof value !== "string") return null;
 
@@ -166,6 +200,22 @@ function normalizeBody(value: unknown): string | null {
   if (!normalized) return null;
 
   return normalized.slice(0, MAX_POST_TEXT_LENGTH).trim();
+}
+
+function clampBodyToTargetLines(body: string, targetLineCount: number): string {
+  const lines = body
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (lines.length <= targetLineCount) {
+    return body;
+  }
+
+  const trimmedLines = lines.slice(0, targetLineCount);
+  trimmedLines[trimmedLines.length - 1] = `${trimmedLines[trimmedLines.length - 1]}…`;
+  return trimmedLines.join("\n");
 }
 
 function normalizeHashtag(value: unknown): string | null {
@@ -203,6 +253,11 @@ function normalizeHashtags(value: unknown): string[] | null {
   if (hashtags.length < 4) return null;
 
   return hashtags;
+}
+
+function trimHashtagsToTargetCount(hashtags: string[], targetCount: number): string[] {
+  if (hashtags.length <= targetCount) return hashtags;
+  return hashtags.slice(0, targetCount);
 }
 
 function normalizeCount(value: unknown): number | null {
@@ -245,7 +300,7 @@ function normalizeRagebaitPost(input: unknown): RagebaitPost | null {
   return {
     authorName,
     authorTitle,
-    headline,
+    headline: clampHeadlineToTargetLength(headline, MAX_HEADLINE_LENGTH),
     body,
     hashtags,
     reactionCount,
@@ -295,7 +350,7 @@ export async function POST(request: Request) {
         verbosity: "medium",
       },
       temperature: 1.1,
-      max_output_tokens: 900,
+      max_output_tokens: getOutputTokenBudget(settings),
     });
 
     const parsed = parseStructuredJson(response.output_text);
@@ -307,6 +362,14 @@ export async function POST(request: Request) {
         { status: 502 },
       );
     }
+
+    const targetHeadlineLength = getTargetHeadlineLength(settings);
+    const targetBodyLineCount = getTargetBodyLineCount(settings);
+    const targetHashtagCount = getTargetHashtagCount(settings);
+
+    post.headline = clampHeadlineToTargetLength(post.headline, targetHeadlineLength);
+    post.body = clampBodyToTargetLines(post.body, targetBodyLineCount);
+    post.hashtags = trimHashtagsToTargetCount(post.hashtags, targetHashtagCount);
 
     return NextResponse.json(post);
   } catch {

@@ -34,6 +34,9 @@ function isValidSettings(input: unknown): input is RagebaitSettings {
   if (!input || typeof input !== "object") return false;
 
   const keys: Array<keyof RagebaitSettings> = [
+    "headlineLength",
+    "bodyLength",
+    "hashtagCount",
     "absurdity",
     "corporateCringe",
     "aiPanic",
@@ -115,6 +118,7 @@ export async function POST(request: Request) {
       instructions: `
 Generate one completely fictional, satirical LinkedIn headline.
 It must be ALL CAPS, dramatic, and under 130 characters.
+Use the headlineLength slider to decide whether the headline is punchier or a bit longer.
 No real people, no real companies, no factual claims about real organizations.
 Return only valid JSON matching the requested schema.
       `.trim(),
@@ -128,6 +132,9 @@ aiPanic=${settings.aiPanic}
 founderEgo=${settings.founderEgo}
 humorLevel=${settings.humorLevel}
 dystopiaLevel=${settings.dystopiaLevel}
+headlineLength=${settings.headlineLength}
+bodyLength=${settings.bodyLength}
+hashtagCount=${settings.hashtagCount}
       `.trim(),
       text: {
         format: headlineResponseFormat,

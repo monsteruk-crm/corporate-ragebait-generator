@@ -7,6 +7,9 @@ function isValidSettings(input: unknown): input is RagebaitSettings {
   if (!input || typeof input !== "object") return false;
 
   const keys: Array<keyof RagebaitSettings> = [
+    "headlineLength",
+    "bodyLength",
+    "hashtagCount",
     "absurdity",
     "corporateCringe",
     "aiPanic",
