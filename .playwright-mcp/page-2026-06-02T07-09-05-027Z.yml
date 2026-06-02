@@ -1,0 +1,91 @@
+- main [ref=e2]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - paragraph [ref=e6]: Satire project
+      - heading "LinkedIn Ragebait Forge" [level=1] [ref=e7]
+      - paragraph [ref=e8]: Build absurd fake thought-leadership posts with fictional personas and overcaffeinated corporate drama.
+      - paragraph [ref=e9]: "Shortcut: Cmd/Ctrl + Shift + L toggles daily limit bypass"
+    - generic [ref=e11]:
+      - 'button "Unlimited mode: Off" [ref=e12]'
+      - button "Generate Ragebait Post" [ref=e13]
+  - generic [ref=e14]:
+    - complementary [ref=e15]:
+      - region "Generator controls" [ref=e16]:
+        - generic [ref=e17]:
+          - heading "Controls" [level=2] [ref=e18]
+          - button "Randomize parameters" [ref=e19]:
+            - img [ref=e20]
+            - text: Randomize
+        - generic [ref=e26]:
+          - generic [ref=e27]:
+            - generic [ref=e28]:
+              - generic [ref=e29]: Absurdity
+              - generic [ref=e30]: "88"
+            - slider "Absurdity 88" [ref=e31]: "88"
+          - generic [ref=e32]:
+            - generic [ref=e33]:
+              - generic [ref=e34]: Corporate cringe
+              - generic [ref=e35]: "30"
+            - slider "Corporate cringe 30" [ref=e36]: "30"
+          - generic [ref=e37]:
+            - generic [ref=e38]:
+              - generic [ref=e39]: AI panic
+              - generic [ref=e40]: "71"
+            - slider "AI panic 71" [ref=e41]: "71"
+          - generic [ref=e42]:
+            - generic [ref=e43]:
+              - generic [ref=e44]: Founder ego
+              - generic [ref=e45]: "93"
+            - slider "Founder ego 93" [ref=e46]: "93"
+          - generic [ref=e47]:
+            - generic [ref=e48]:
+              - generic [ref=e49]: Humor level
+              - generic [ref=e50]: "28"
+            - slider "Humor level 28" [ref=e51]: "28"
+          - generic [ref=e52]:
+            - generic [ref=e53]:
+              - generic [ref=e54]: Dystopia level
+              - generic [ref=e55]: "49"
+            - slider "Dystopia level 49" [ref=e56]: "49"
+          - generic [ref=e57]:
+            - generic [ref=e58]:
+              - generic [ref=e59]: Emoji density
+              - generic [ref=e60]: "51"
+            - slider "Emoji density 51" [ref=e61]: "51"
+          - generic [ref=e62]:
+            - generic [ref=e63]:
+              - generic [ref=e64]: Hashtag chaos
+              - generic [ref=e65]: "38"
+            - slider "Hashtag chaos 38" [ref=e66]: "38"
+      - generic [ref=e67]:
+        - generic [ref=e68]: Suggested image prompt
+        - textbox "Suggested image prompt" [ref=e69]: Retro pixel-art style image of a coffee machine with glasses and a suit, sitting behind a corporate desk surrounded by shocked pixel-art employees, with a glowing neon 'AI CEO' sign overhead
+        - button "Regenerate Prompt" [ref=e70]
+        - button "Generate Support Image" [ref=e71]
+        - button "Publish Share Page" [ref=e72]
+        - button "Share on LinkedIn" [ref=e73]
+        - generic [ref=e74]:
+          - paragraph [ref=e75]: Live share page
+          - link "http://localhost:3000/p/cmpvbyb6v000204l70m75on0i" [ref=e76] [cursor=pointer]:
+            - /url: http://localhost:3000/p/cmpvbyb6v000204l70m75on0i
+    - region "Post preview" [ref=e78]:
+      - generic [ref=e79]:
+        - heading "Published Post Preview" [level=2] [ref=e80]
+        - link "Open static page" [ref=e81] [cursor=pointer]:
+          - /url: http://localhost:3000/p/cmpvbyb6v000204l70m75on0i
+      - article [ref=e82]:
+        - generic [ref=e85]:
+          - paragraph [ref=e86]: Dr. Zebulon Clickbait
+          - paragraph [ref=e87]: Chief Synergy Officer at Quantum Banana LLC
+        - heading "HOW I USED AI TO TURN MY COFFEE MACHINE INTO A CEO THAT FIRED ME" [level=3] [ref=e88]
+        - paragraph [ref=e89]: Last week, I uploaded my soul to the cloud and unleashed an AI-powered coffee maker that now runs Quantum Banana. It promptly fired me but increased stakeholder happiness by 3000%. My advice? Automate your existential crises before your competitors do. 🚀🤖☕️
+        - paragraph [ref=e90]: "#DisruptTheDisruption #AIOverlords #QuantumBananaRevolution #CoffeePoweredLeadership #NextGenSynergy #AlgorithmicAscendance"
+        - img "Generated satirical support image" [ref=e92]
+        - generic [ref=e93]:
+          - generic [ref=e94]: 1,347 reactions
+          - generic [ref=e95]: 229 comments
+          - generic [ref=e96]: 112 reposts
+        - generic [ref=e97]:
+          - paragraph [ref=e98]: Share URL
+          - link "http://localhost:3000/p/cmpvbyb6v000204l70m75on0i" [ref=e99] [cursor=pointer]:
+            - /url: http://localhost:3000/p/cmpvbyb6v000204l70m75on0i

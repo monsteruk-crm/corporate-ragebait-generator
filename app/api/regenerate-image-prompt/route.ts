@@ -1,15 +1,38 @@
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
+import type { ResponseTextConfig } from "openai/resources/responses/responses";
 import { consumeDailyQueryQuota } from "../../../lib/rate-limit";
 import type { RagebaitPost, RagebaitSettings } from "../../../lib/types";
+
+export const runtime = "nodejs";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 const textModel = process.env.OPENAI_TEXT_MODEL || "gpt-4.1-mini";
+const MAX_IMAGE_PROMPT_LENGTH = 320;
+
+const imagePromptResponseFormat: NonNullable<ResponseTextConfig["format"]> = {
+  type: "json_schema",
+  name: "ragebait_image_prompt",
+  strict: true,
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    required: ["imagePrompt"],
+    properties: {
+      imagePrompt: {
+        type: "string",
+        minLength: 1,
+        maxLength: MAX_IMAGE_PROMPT_LENGTH,
+      },
+    },
+  },
+};
 
 function isValidSettings(input: unknown): input is RagebaitSettings {
   if (!input || typeof input !== "object") return false;
+
   const keys: Array<keyof RagebaitSettings> = [
     "absurdity",
     "corporateCringe",
@@ -20,6 +43,7 @@ function isValidSettings(input: unknown): input is RagebaitSettings {
     "emojiDensity",
     "hashtagChaos",
   ];
+
   return keys.every((key) => {
     const value = (input as Record<string, unknown>)[key];
     return typeof value === "number" && Number.isFinite(value);
@@ -28,6 +52,7 @@ function isValidSettings(input: unknown): input is RagebaitSettings {
 
 function isValidPostInput(input: unknown): input is RagebaitPost {
   if (!input || typeof input !== "object") return false;
+
   const post = input as Record<string, unknown>;
   return (
     typeof post.authorName === "string" &&
@@ -35,6 +60,26 @@ function isValidPostInput(input: unknown): input is RagebaitPost {
     typeof post.headline === "string" &&
     typeof post.body === "string"
   );
+}
+
+function normalizeImagePrompt(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+
+  const prompt = value.replace(/\r\n?/g, " ").replace(/\s+/g, " ").trim();
+  if (!prompt) return null;
+
+  return prompt.slice(0, MAX_IMAGE_PROMPT_LENGTH).trim();
+}
+
+function parseStructuredJson(text: string): unknown | null {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return null;
+  }
 }
 
 export async function POST(request: Request) {
@@ -66,12 +111,15 @@ export async function POST(request: Request) {
       );
     }
 
-    const prompt = `
-Create one image generation prompt for a satirical parody LinkedIn post.
-Use retro pixel-art style and fictional elements only.
-No real people and no real company names.
-Return plain text only. No markdown.
-
+    const response = await openai.responses.create({
+      model: textModel,
+      instructions: `
+Create one short visual prompt for a fictional satirical LinkedIn post.
+Use retro pixel-art style. No real people, no real brands, no real organizations.
+The prompt should be vivid but concise and should not mention a real company or person.
+Return only valid JSON matching the requested schema.
+      `.trim(),
+      input: `
 Post context:
 Headline: ${post.headline}
 Body: ${post.body}
@@ -86,15 +134,21 @@ humorLevel=${settings.humorLevel}
 dystopiaLevel=${settings.dystopiaLevel}
 emojiDensity=${settings.emojiDensity}
 hashtagChaos=${settings.hashtagChaos}
-    `.trim();
-
-    const response = await openai.responses.create({
-      model: textModel,
-      input: prompt,
+      `.trim(),
+      text: {
+        format: imagePromptResponseFormat,
+        verbosity: "medium",
+      },
       temperature: 1,
+      max_output_tokens: 120,
     });
 
-    const imagePrompt = response.output_text?.trim();
+    const parsed = parseStructuredJson(response.output_text);
+    const imagePrompt = normalizeImagePrompt(
+      parsed && typeof parsed === "object"
+        ? (parsed as Record<string, unknown>).imagePrompt
+        : null,
+    );
     if (!imagePrompt) {
       return NextResponse.json(
         { error: "Model returned empty prompt." },

@@ -9,7 +9,6 @@ import {
 } from "./components/LinkedInPostPreview";
 import { RagebaitControls } from "./components/RagebaitControls";
 import { ShareButton } from "./components/ShareButton";
-import { generateLocalRagebait } from "../lib/localGenerator";
 import { buildShareText } from "../lib/published-post";
 import type { RagebaitPost, RagebaitSettings } from "../lib/types";
 
@@ -143,7 +142,6 @@ export function HomeClient({
   async function handleGenerate() {
     setIsGenerating(true);
     setGenerationNotice(null);
-    setPublishedUrl(null);
 
     try {
       const response = await fetch("/api/generate", {
@@ -153,29 +151,31 @@ export function HomeClient({
       });
 
       if (!response.ok) {
-        const errorMessage = await readErrorMessage(
-          response,
-          "OpenAI unavailable. Used local parody generator fallback.",
-        );
-
         if (response.status === 429) {
-          setGenerationNotice(errorMessage);
+          setGenerationNotice(
+            await readErrorMessage(
+              response,
+              "Daily query limit reached for this IP.",
+            ),
+          );
           return;
         }
 
-        throw new Error(errorMessage);
+        setGenerationNotice(
+          "AI generation failed. Please check OPENAI_API_KEY or try again.",
+        );
+        return;
       }
 
       const json = (await response.json()) as RagebaitPost;
       setPost(json);
       setImagePrompt(json.imagePrompt);
       setImageUrl(null);
+      setPublishedUrl(null);
     } catch {
-      const fallbackPost = generateLocalRagebait(settings);
-      setPost(fallbackPost);
-      setImagePrompt(fallbackPost.imagePrompt);
-      setImageUrl(null);
-      setGenerationNotice("OpenAI unavailable. Used local parody generator fallback.");
+      setGenerationNotice(
+        "AI generation failed. Please check OPENAI_API_KEY or try again.",
+      );
     } finally {
       setIsGenerating(false);
     }

@@ -1,15 +1,38 @@
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
+import type { ResponseTextConfig } from "openai/resources/responses/responses";
 import { consumeDailyQueryQuota } from "../../../lib/rate-limit";
 import type { RagebaitPost, RagebaitSettings } from "../../../lib/types";
+
+export const runtime = "nodejs";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 const textModel = process.env.OPENAI_TEXT_MODEL || "gpt-4.1-mini";
+const MAX_HEADLINE_LENGTH = 130;
+
+const headlineResponseFormat: NonNullable<ResponseTextConfig["format"]> = {
+  type: "json_schema",
+  name: "ragebait_headline",
+  strict: true,
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    required: ["headline"],
+    properties: {
+      headline: {
+        type: "string",
+        minLength: 1,
+        maxLength: MAX_HEADLINE_LENGTH,
+      },
+    },
+  },
+};
 
 function isValidSettings(input: unknown): input is RagebaitSettings {
   if (!input || typeof input !== "object") return false;
+
   const keys: Array<keyof RagebaitSettings> = [
     "absurdity",
     "corporateCringe",
@@ -20,6 +43,7 @@ function isValidSettings(input: unknown): input is RagebaitSettings {
     "emojiDensity",
     "hashtagChaos",
   ];
+
   return keys.every((key) => {
     const value = (input as Record<string, unknown>)[key];
     return typeof value === "number" && Number.isFinite(value);
@@ -28,8 +52,33 @@ function isValidSettings(input: unknown): input is RagebaitSettings {
 
 function isValidPostInput(input: unknown): input is RagebaitPost {
   if (!input || typeof input !== "object") return false;
+
   const post = input as Record<string, unknown>;
-  return typeof post.body === "string" && typeof post.authorTitle === "string";
+  return (
+    typeof post.body === "string" &&
+    typeof post.authorTitle === "string" &&
+    typeof post.headline === "string"
+  );
+}
+
+function normalizeHeadline(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+
+  const headline = value.replace(/\r\n?/g, " ").replace(/\s+/g, " ").trim();
+  if (!headline) return null;
+
+  return headline.slice(0, MAX_HEADLINE_LENGTH).toUpperCase();
+}
+
+function parseStructuredJson(text: string): unknown | null {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return null;
+  }
 }
 
 export async function POST(request: Request) {
@@ -61,11 +110,15 @@ export async function POST(request: Request) {
       );
     }
 
-    const prompt = `
-Generate one SATIRICAL all-caps LinkedIn ragebait headline.
-Fictional only. No real people or real companies.
-Return plain text only.
-
+    const response = await openai.responses.create({
+      model: textModel,
+      instructions: `
+Generate one completely fictional, satirical LinkedIn headline.
+It must be ALL CAPS, dramatic, and under 130 characters.
+No real people, no real companies, no factual claims about real organizations.
+Return only valid JSON matching the requested schema.
+      `.trim(),
+      input: `
 Context:
 Author role: ${post.authorTitle}
 Body: ${post.body}
@@ -75,15 +128,21 @@ aiPanic=${settings.aiPanic}
 founderEgo=${settings.founderEgo}
 humorLevel=${settings.humorLevel}
 dystopiaLevel=${settings.dystopiaLevel}
-    `.trim();
-
-    const response = await openai.responses.create({
-      model: textModel,
-      input: prompt,
-      temperature: 1,
+      `.trim(),
+      text: {
+        format: headlineResponseFormat,
+        verbosity: "medium",
+      },
+      temperature: 1.1,
+      max_output_tokens: 120,
     });
 
-    const headline = response.output_text?.trim();
+    const parsed = parseStructuredJson(response.output_text);
+    const headline = normalizeHeadline(
+      parsed && typeof parsed === "object"
+        ? (parsed as Record<string, unknown>).headline
+        : null,
+    );
     if (!headline) {
       return NextResponse.json(
         { error: "Model returned empty headline." },

@@ -139,7 +139,6 @@ Implementation details:
     - GenerateButton.tsx
     - ShareButton.tsx
     - types.ts
-    - lib/localGenerator.ts
     - lib/prompts.ts
 - Use strong TypeScript types.
 - Avoid overengineering.
